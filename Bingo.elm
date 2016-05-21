@@ -3,9 +3,9 @@ module Bingo exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.App exposing (beginnerProgram)
-import Html.Events exposing (onClick)
-import String exposing (toUpper, repeat, trimRight)
-
+import Html.Events exposing (onClick, onInput)
+import String exposing (toUpper, repeat, trimRight, isEmpty)
+import BingoUtils as Utils
 
 -- MODEL
 
@@ -17,8 +17,10 @@ type alias Entry =
     }
 
 type alias Model =
-    {
-        entries: List Entry
+    { entries: List Entry
+    , phraseInput: String
+    , pointsInput: String
+    , nextID: Int
     }
 
 newEntry : String -> Int -> Int -> Entry
@@ -31,13 +33,15 @@ newEntry phrase points id =
 
 initialModel : Model
 initialModel =
-    { entries =
-        [ newEntry "Doing Agile" 200 2
-        , newEntry "In the Cloud" 300 3
-        , newEntry "Future Proof" 100 1
-        , newEntry "Rock-Star Ninja" 400 4
-        ]
-
+    { entries = []
+        --[ newEntry "Doing Agile" 200 2
+        --, newEntry "In the Cloud" 300 3
+        --, newEntry "Future Proof" 100 1
+        --, newEntry "Rock-Star Ninja" 400 4
+        --]
+    , phraseInput = ""
+    , pointsInput = ""
+    , nextID = 5
     }
 
 -- UPDATE
@@ -47,6 +51,9 @@ type Msg
     | Sort
     | Delete Int
     | Mark Int
+    | UpdatePhraseInput String
+    | UpdatePointsInput String
+    | Add
 
 update : Msg -> Model -> Model
 update msg model =
@@ -71,6 +78,30 @@ update msg model =
                     if e.id == id then { e | wasSpoken = (not e.wasSpoken) } else e
             in
                 { model | entries = List.map updateEntry model.entries }
+
+        UpdatePhraseInput contents ->
+            { model | phraseInput = contents }
+
+        UpdatePointsInput contents ->
+            { model | pointsInput = contents }
+
+        Add ->
+            let
+                entryToAdd =
+                    newEntry model.phraseInput (Utils.parseInt model.pointsInput) model.nextID
+                isInvalid model =
+                    isEmpty model.phraseInput || isEmpty model.pointsInput
+            in
+                if isInvalid model
+                then model
+                else
+                    { model
+                        | phraseInput = ""
+                        , pointsInput = ""
+                        , entries = entryToAdd :: model.entries
+                        , nextID = model.nextID + 1
+                    }
+
 
 -- VIEW
 
@@ -125,10 +156,36 @@ entryList entries =
     in
         ul [ ] items
 
+
+entryForm : Model -> Html Msg
+entryForm model =
+    div [ ]
+        [ input
+            [ type' "text"
+            , placeholder "Phrase"
+            , value model.phraseInput
+            , name "phrase"
+            , autofocus True
+            , onInput UpdatePhraseInput
+            ]
+            [ ]
+        , input
+            [ type' "number"
+            , placeholder "Points"
+            , value model.pointsInput
+            , name "points"
+            , onInput UpdatePointsInput
+            ]
+            [ ]
+        , button [ class "add", onClick Add ] [ text "Add" ]
+        ]
+
+
 view : Model -> Html Msg
 view model =
     div [ id "container" ]
         [ pageHeader
+        , entryForm model
         , entryList model.entries
         , button
             [ class "sort", onClick Sort  ]
